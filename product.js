@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     loadProductData();
+    loadLogo();
 });
 
 document.getElementById('product-form').addEventListener('submit', function(event) {
@@ -17,6 +18,26 @@ document.getElementById('product-form').addEventListener('submit', function(even
 
     document.getElementById('product-form').reset();
 });
+
+document.getElementById('logo-upload').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const logoUrl = e.target.result;
+            document.getElementById('logo').src = logoUrl;
+            localStorage.setItem('logoUrl', logoUrl);
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+function loadLogo() {
+    const logoUrl = localStorage.getItem('logoUrl');
+    if (logoUrl) {
+        document.getElementById('logo').src = logoUrl;
+    }
+}
 
 function addProductRow(asin, wasteDetermination, destination, weight, type) {
     const tableBody = document.getElementById('product-table-body');
@@ -120,18 +141,27 @@ function loadProductData() {
         const destinationCell = document.createElement('td');
         const weightCell = document.createElement('td');
         const typeCell = document.createElement('td');
+        const removeCell = document.createElement('td');
+        const removeButton = document.createElement('button');
 
         asinCell.textContent = item.asin;
         wasteDeterminationCell.textContent = item.wasteDetermination;
         destinationCell.textContent = item.destination;
         weightCell.textContent = item.weight.toFixed(1);
         typeCell.textContent = item.type;
+        removeButton.textContent = 'Remove';
+        removeButton.className = 'remove-btn'; // Adding class for CSS styling
+        removeButton.addEventListener('click', function() {
+            removeProductEntry(newRow, item.weight, item.type);
+        });
 
+        removeCell.appendChild(removeButton);
         newRow.appendChild(asinCell);
         newRow.appendChild(wasteDeterminationCell);
         newRow.appendChild(destinationCell);
         newRow.appendChild(weightCell);
         newRow.appendChild(typeCell);
+        newRow.appendChild(removeCell);
 
         tableBody.appendChild(newRow);
 
