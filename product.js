@@ -18,6 +18,26 @@ document.getElementById('product-form').addEventListener('submit', function(even
     document.getElementById('product-form').reset();
 });
 
+document.getElementById('logo-upload').addEventListener('change', function(event) {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const logoUrl = e.target.result;
+            document.getElementById('logo').src = logoUrl;
+            localStorage.setItem('logoUrl', logoUrl);
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+function loadLogo() {
+    const logoUrl = localStorage.getItem('logoUrl');
+    if (logoUrl) {
+        document.getElementById('logo').src = logoUrl;
+    }
+}
+
 function addProductRow(asin, wasteDetermination, destination, weight, type) {
     const tableBody = document.getElementById('product-table-body');
     const newRow = document.createElement('tr');
