@@ -15,6 +15,7 @@
     <nav>
         <div id="product-tab" class="tab active">Product Tracker</div>
         <div id="hours-tab" class="tab">Hours Worked Tracker</div>
+        <div id="profiler-tab" class="tab">Product Profiler Tool</div>
     </nav>
     <div class="container">
         <div id="product-tracker" class="tab-content">
@@ -82,11 +83,29 @@
             <div class="total-hours">Total Hours Worked: <span id="total-hours">0</span></div>
             <button id="clear-hours-table">Clear Table</button>
             <button id="export-hours-table">Export to Excel</button>
+        
+        </div>
+        <div id="profiler-tracker" class="tab-content hidden">
+            <h2>Product Profiler Tool</h2>
+            <form id="pdf-upload-form">
+                <label for="pdf-upload">Upload PDF:</label>
+                <input type="file" id="pdf-upload" accept=".pdf">
+                <button type="submit">Process PDF</button>
+            </form>
+            <div id="pdf-output">
+                <h3>Extracted Sections:</h3>
+                <div id="section-output">
+                    <!-- Extracted content will appear here -->
+                </div>
+            </div>
         </div>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.worker.min.js"></script>
     <script src="product.js"></script>
     <script src="hours.js"></script>
     <script src="tabs.js"></script>
+    <script src="profiler.js"></script>
 </body>
 </html>

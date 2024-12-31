@@ -18,3 +18,13 @@ document.addEventListener('DOMContentLoaded', function() {
         productTracker.classList.add('hidden');
     });
 });
+function activateTab(tab, content) {
+    const allTabs = document.querySelectorAll('.tab');
+    const allContents = document.querySelectorAll('.tab-content');
+
+    allTabs.forEach(t => t.classList.remove('active'));
+    allContents.forEach(c => c.classList.add('hidden'));
+
+    tab.classList.add('active');
+    content.classList.remove('hidden');
+}
