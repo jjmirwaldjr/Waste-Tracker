@@ -22,9 +22,10 @@ document.getElementById('work-hours-form').addEventListener('submit', function(e
     nameCell.textContent = name;
     hoursCell.textContent = hours.toFixed(1);
     removeButton.textContent = 'Remove';
-    removeButton.className = 'remove-btn'; // Adding class for CSS styling
+    removeButton.className = 'remove-btn';
     removeButton.addEventListener('click', function() {
         removeHoursEntry(newRow, hours);
+        refreshDataModel();
     });
 
     removeCell.appendChild(removeButton);
@@ -44,6 +45,10 @@ document.getElementById('work-hours-form').addEventListener('submit', function(e
 function removeHoursEntry(row, hours) {
     row.remove();
     updateTotalHours(-hours);
+    saveHoursData();
+}
+
+function refreshDataModel() {
     saveHoursData();
 }
 
@@ -109,9 +114,9 @@ function exportHoursDataToExcel() {
     const rows = Array.from(tableBody.rows);
     const data = rows.map(row => {
         return [
-            row.cells[0].textContent,
-            row.cells[1].textContent,
-            row.cells[2].textContent
+            `"${row.cells[0].textContent.replace(/"/g, '""')}"`,
+            `"${row.cells[1].textContent.replace(/"/g, '""')}"`,
+            `"${row.cells[2].textContent.replace(/"/g, '""')}"`
         ];
     });
     const worksheet = XLSX.utils.aoa_to_sheet([["Date", "Name", "Hours Worked"], ...data]);
@@ -120,3 +125,4 @@ function exportHoursDataToExcel() {
     const date = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(workbook, `Hours_Data_${date}.xlsx`);
 }
+
