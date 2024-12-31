@@ -22,6 +22,7 @@ document.getElementById('work-hours-form').addEventListener('submit', function(e
     nameCell.textContent = name;
     hoursCell.textContent = hours.toFixed(1);
     removeButton.textContent = 'Remove';
+    removeButton.className = 'remove-btn'; // Adding class for CSS styling
     removeButton.addEventListener('click', function() {
         removeHoursEntry(newRow, hours);
     });
