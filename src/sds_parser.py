@@ -22,17 +22,13 @@ class SDSParser:
             for page in pdf.pages:
                 full_text += page.extract_text() + '\n'
 
-            # Split the document into sections
             sections_split = re.split(r'(?i)(?=SECTION \d+[.:]+)', full_text)
             
             for section_text in sections_split:
                 for section_num, section_name in self.sections.items():
-                    # Create a pattern that matches both number and name flexibly
                     pattern = rf"{section_num}[.:]\s*{section_name}"
                     if re.search(pattern, section_text, re.IGNORECASE):
-                        # Remove the section header and clean up the content
                         content = re.sub(pattern, '', section_text, flags=re.IGNORECASE)
-                        # Clean up the content
                         content = self._clean_content(content)
                         extracted_data[f"{section_num}"] = content
                         break
@@ -40,9 +36,7 @@ class SDSParser:
         return extracted_data
 
     def _clean_content(self, content):
-        # Remove extra whitespace and empty lines
         lines = [line.strip() for line in content.split('\n') if line.strip()]
-        # Remove content that might belong to the next section
         cleaned_lines = []
         for line in lines:
             if re.match(r'SECTION \d+', line, re.IGNORECASE):

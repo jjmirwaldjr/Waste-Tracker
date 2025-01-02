@@ -1,12 +1,18 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from sds_parser import SDSParser
 import os
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Ensure temp directory exists
 if not os.path.exists('temp'):
     os.makedirs('temp')
+
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/upload-sds', methods=['POST'])
 def upload_sds():
@@ -18,16 +24,13 @@ def upload_sds():
         return jsonify({'error': 'No file selected'}), 400
         
     if file and file.filename.endswith('.pdf'):
-        # Save uploaded file temporarily
         temp_path = os.path.join('temp', file.filename)
         file.save(temp_path)
         
-        # Parse SDS
         parser = SDSParser(temp_path)
         extracted_data = parser.extract_sections()
         formatted_output = parser.format_output(extracted_data)
         
-        # Clean up temporary file
         os.remove(temp_path)
         
         return jsonify({

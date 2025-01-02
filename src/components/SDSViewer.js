@@ -36,7 +36,6 @@ const SDSViewer = () => {
         </div>
     );
 };
-
 document.getElementById('sdsFile').addEventListener('change', async (event) => {
     const file = event.target.files[0];
     const formData = new FormData();
@@ -51,9 +50,12 @@ document.getElementById('sdsFile').addEventListener('change', async (event) => {
         const data = await response.json();
         if (data.success) {
             document.getElementById('result').textContent = data.formatted_data;
+        } else {
+            document.getElementById('result').textContent = 'Error: ' + data.error;
         }
     } catch (error) {
         console.error('Error:', error);
+        document.getElementById('result').textContent = 'Error: ' + error.message;
     }
 });
 
