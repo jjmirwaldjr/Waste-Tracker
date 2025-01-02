@@ -1,6 +1,8 @@
 import pdfplumber
 import re
 
+
+
 class SDSParser:
     def __init__(self, pdf_path):
         self.pdf_path = pdf_path
