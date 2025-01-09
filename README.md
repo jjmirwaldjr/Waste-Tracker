@@ -11,7 +11,7 @@ This is a personal project I am working on. It helps me with my daily standard o
 #### Version 1.02
 - Made the remove button persistent.
 
-#### Version 1.03 (Current)
+#### Version 1.03
 - Fixed unclosed `<tr>` tag in the hours tracker table.
 - Added debug logs to monitor key operations (form submissions, table updates, localStorage interactions).
 - Updated the `exportHoursDataToExcel` function to handle special characters in cell data properly.
