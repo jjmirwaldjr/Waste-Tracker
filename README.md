@@ -18,9 +18,19 @@ This is a personal project I am working on. It helps me with my daily standard o
 - Added accessibility enhancements with ARIA labels for form inputs.
 - Ensured remove button persistency by refreshing data models after deletion.
 
-#### Version 1.04 (Current)
+#### Version 1.04
 - Introduced the "Product Profiler Tool" tab for extracting specific sections from uploaded PDFs.
 - Integrated PDF.js to parse and extract sections 1, 2, 3, 9, 10, 13, and 14 from PDF files.
 - Added error handling for unsupported file types and missing sections in PDFs.
 - Improved debug logging to trace PDF processing and tab switching.
 - Updated `index.html`, `profiler.js`, and `style.css` to support the new feature.
+
+#### Version 1.05 (Current)
+- Added Title 40 CFR Part 262 Subpart C reference matching functionality.
+- Implemented automatic extraction of key hazardous waste characteristics:
+  - pH values from Section 9
+  - Flash point data from Section 9
+  - Reactivity information from Section 10
+  - D-list toxic characteristics (D001-D043) from Section 3
+- Enhanced PDF analysis with hazardous waste characteristics summary display
+- Added CFR guidance content for waste handling compliance
