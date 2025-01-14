@@ -25,7 +25,7 @@ This is a personal project I am working on. It helps me with my daily standard o
 - Improved debug logging to trace PDF processing and tab switching.
 - Updated `index.html`, `profiler.js`, and `style.css` to support the new feature.
 
-#### Version 1.05 (Current)
+#### Version 1.05
 - Added Title 40 CFR Part 262 Subpart C reference matching functionality.
 - Implemented automatic extraction of key hazardous waste characteristics:
   - pH values from Section 9
@@ -34,3 +34,13 @@ This is a personal project I am working on. It helps me with my daily standard o
   - D-list toxic characteristics (D001-D043) from Section 3
 - Enhanced PDF analysis with hazardous waste characteristics summary display
 - Added CFR guidance content for waste handling compliance
+
+#### Version 1.06 (Current)
+- Enhanced hazardous waste classification logic following EPA regulations:
+  - Implemented D001 Ignitability criteria per 40 CFR 261.21
+  - Updated D003 Reactivity classification per 40 CFR 261.23
+  - Added comprehensive Toxicity characteristics per 40 CFR 261.24
+  - Added automatic NON-RCRA classification when no D-list characteristics present
+- Added concentration limit checks for toxic constituents
+- Improved flash point analysis for ignitable materials
+- Enhanced regulatory compliance accuracy in waste determinations
