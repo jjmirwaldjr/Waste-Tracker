@@ -74,9 +74,87 @@ function detectAerosols(sectionText) {
     return null;
 }
 
+// Add this constant for D003 reactive criteria
+const D003_CRITERIA = {
+    conditions: [
+        'normally unstable and readily undergoes violent change without detonating',
+        'reacts violently with water',
+        'forms potentially explosive mixtures with water',
+        'generates toxic gases when mixed with water',
+        'cyanide or sulfide bearing waste',
+        'capable of detonation if subjected to strong initiating source',
+        'capable of detonation at standard temperature and pressure'
+    ]
+};
+
+// Add regulatory criteria constants
+const D001_CRITERIA = {
+    conditions: [
+        'flash point less than 60°C (140°F)',
+        'capable of causing fire through friction',
+        'ignitable compressed gas',
+        'oxidizer'
+    ],
+    flashPointThreshold: 60 // in Celsius
+};
+
+const D_TOXICITY_LIMITS = {
+    'D004': { chemical: 'Arsenic', limit: 5.0 },
+    'D005': { chemical: 'Barium', limit: 100.0 },
+    'D006': { chemical: 'Cadmium', limit: 1.0 },
+    'D007': { chemical: 'Chromium', limit: 5.0 },
+    'D008': { chemical: 'Lead', limit: 5.0 },
+    'D009': { chemical: 'Mercury', limit: 0.2 },
+    'D010': { chemical: 'Selenium', limit: 1.0 },
+    'D011': { chemical: 'Silver', limit: 5.0 },
+    'D018': { chemical: 'Benzene', limit: 0.5 },
+    'D019': { chemical: 'Carbon tetrachloride', limit: 0.5 },
+    'D021': { chemical: 'Chlorobenzene', limit: 100.0 },
+    'D022': { chemical: 'Chloroform', limit: 6.0 },
+    'D035': { chemical: 'Methyl ethyl ketone', limit: 200.0 },
+    'D039': { chemical: 'Tetrachloroethylene', limit: 0.7 },
+    'D040': { chemical: 'Trichloroethylene', limit: 0.5 }
+};
+
+function checkIgnitability(sectionText, flashPoint) {
+    const isIgnitable = D001_CRITERIA.conditions.some(condition => 
+        sectionText.toLowerCase().includes(condition.toLowerCase())
+    );
+
+    if (flashPoint && flashPoint <= D001_CRITERIA.flashPointThreshold) {
+        return true;
+    }
+
+    return isIgnitable;
+}
+
+function checkToxicity(sectionText) {
+    const toxicityResults = [];
+    
+    for (const [code, info] of Object.entries(D_TOXICITY_LIMITS)) {
+        const regex = new RegExp(`${info.chemical}[:\\s]*(\\d+(?:\\.\\d+)?)[\\s]*(?:mg|ppm|mg\\/[lL])`, 'i');
+        const match = sectionText.match(regex);
+        
+        if (match) {
+            const concentration = parseFloat(match[1]);
+            if (concentration >= info.limit) {
+                toxicityResults.push({
+                    code: code,
+                    chemical: info.chemical,
+                    concentration: concentration,
+                    limit: info.limit
+                });
+            }
+        }
+    }
+    
+    return toxicityResults;
+}
+
 function extractHazardousCharacteristics(sectionText, sectionNumber) {
     const characteristics = {};
-    
+    let isDListed = false;
+
     if (sectionNumber === 9) {
         const phMatch = sectionText.match(/pH\s*:?\s*([\d.]+)/i);
         if (phMatch) {
@@ -86,25 +164,43 @@ function extractHazardousCharacteristics(sectionText, sectionNumber) {
             if (phValue <= 2 || phValue >= 12.5) {
                 if (!characteristics.dList) characteristics.dList = [];
                 characteristics.dList.push('D002 - Corrosive');
+                isDListed = true;
                 characteristics.corrosivityNote = `pH ${phValue} meets D002 criteria`;
             }
         }
         
         const flashMatch = sectionText.match(/flash\s*point\s*:?\s*([-\d.]+)\s*[°℃℉]/i);
-        if (flashMatch) characteristics.flashPoint = flashMatch[1];
-    }
-    
-    if (sectionNumber === 10) {
-        const reactivityMatch = sectionText.match(/reactivity\s*:?\s*([^.]+)/i);
-        if (reactivityMatch) characteristics.reactivity = reactivityMatch[1].trim();
-    }
-    
-    if (sectionNumber === 3) {
-        for (const [code, keywords] of Object.entries(TOXIC_CHARACTERISTICS)) {
-            if (keywords.some(keyword => sectionText.toLowerCase().includes(keyword.toLowerCase()))) {
+        if (flashMatch) {
+            characteristics.flashPoint = flashMatch[1];
+            if (checkIgnitability(sectionText, parseFloat(flashMatch[1]))) {
                 if (!characteristics.dList) characteristics.dList = [];
-                characteristics.dList.push(code);
+                characteristics.dList.push('D001 - Ignitable');
+                isDListed = true;
             }
+        }
+    }
+
+    if (sectionNumber === 10) {
+        // Updated D003 reactivity check
+        const isReactive = D003_CRITERIA.conditions.some(condition => 
+            sectionText.toLowerCase().includes(condition.toLowerCase())
+        );
+        
+        if (isReactive) {
+            if (!characteristics.dList) characteristics.dList = [];
+            characteristics.dList.push('D003 - Reactive');
+            isDListed = true;
+        }
+    }
+
+    if (sectionNumber === 3) {
+        const toxicityResults = checkToxicity(sectionText);
+        if (toxicityResults.length > 0) {
+            if (!characteristics.dList) characteristics.dList = [];
+            toxicityResults.forEach(result => {
+                characteristics.dList.push(`${result.code} - ${result.chemical}`);
+                isDListed = true;
+            });
         }
     }
 
@@ -112,13 +208,16 @@ function extractHazardousCharacteristics(sectionText, sectionNumber) {
         const aerosolInfo = detectAerosols(sectionText);
         if (aerosolInfo) {
             characteristics.aerosol = aerosolInfo;
+            isDListed = true;
         }
     }
-    
-    return characteristics;
-}
 
-function matchCFRReferences(textContent) {
+    if (!isDListed && sectionNumber === 3) {
+        characteristics.classification = 'NON-RCRA';
+    }
+
+    return characteristics;
+}function matchCFRReferences(textContent) {
     const matches = [];
     for (const [section, title] of Object.entries(CFR_REFERENCES)) {
         if (textContent.toLowerCase().includes(section.toLowerCase())) {
