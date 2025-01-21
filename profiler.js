@@ -150,9 +150,36 @@ function checkToxicity(sectionText) {
     
     return toxicityResults;
 }
+
 function extractHazardousCharacteristics(sectionText, sectionNumber) {
     const characteristics = {};
     let isDListed = false;
+
+    // Check sections 2 and 3 for hazard classifications
+    if (sectionNumber === 2 || sectionNumber === 3) {
+        if (checkOxidizers(sectionText)) {
+            if (!characteristics.dList) characteristics.dList = [];
+            characteristics.dList.push('D001 - Oxidizer');
+            isDListed = true;
+        }
+        
+        if (checkMetalCorrosivity(sectionText)) {
+            if (!characteristics.dList) characteristics.dList = [];
+            characteristics.dList.push('D002 - Corrosive to Metal');
+            isDListed = true;
+        }
+        
+        const aerosolInfo = detectAerosols(sectionText);
+        if (aerosolInfo) {
+            characteristics.aerosol = aerosolInfo;
+            isDListed = true;
+        }
+
+        // Add explicit NON-RCRA classification if no D-List characteristics found
+        if (!isDListed) {
+            characteristics.classification = 'NON-RCRA';
+        }
+    }
 
     if (sectionNumber === 9) {
         characteristics.stateOfMatter = detectStateOfMatter(sectionText);
@@ -182,7 +209,6 @@ function extractHazardousCharacteristics(sectionText, sectionNumber) {
     }
 
     if (sectionNumber === 10) {
-        // Updated D003 reactivity check
         const isReactive = D003_CRITERIA.conditions.some(condition => 
             sectionText.toLowerCase().includes(condition.toLowerCase())
         );
@@ -194,31 +220,15 @@ function extractHazardousCharacteristics(sectionText, sectionNumber) {
         }
     }
 
-    if (sectionNumber === 3) {
-        const toxicityResults = checkToxicity(sectionText);
-        if (toxicityResults.length > 0) {
-            if (!characteristics.dList) characteristics.dList = [];
-            toxicityResults.forEach(result => {
-                characteristics.dList.push(`${result.code} - ${result.chemical}`);
-                isDListed = true;
-            });
-        }
-    }
-
-    if (sectionNumber === 2 || sectionNumber === 3) {
-        const aerosolInfo = detectAerosols(sectionText);
-        if (aerosolInfo) {
-            characteristics.aerosol = aerosolInfo;
-            isDListed = true;
-        }
-    }
-
-    if (!isDListed && sectionNumber === 3) {
+    if (!isDListed && characteristics.dList?.length === 0) {
         characteristics.classification = 'NON-RCRA';
     }
 
     return characteristics;
-}function matchCFRReferences(textContent) {
+}
+//function matchCFRReferences(textContent) {}
+
+function matchCFRReferences(textContent) {
     const matches = [];
     for (const [section, title] of Object.entries(CFR_REFERENCES)) {
         if (textContent.toLowerCase().includes(section.toLowerCase())) {
@@ -367,4 +377,40 @@ function detectStateOfMatter(sectionText) {
         }
     }
     return 'UNKNOWN';
+}
+
+const D001_OXIDIZER_KEYWORDS = [
+    'oxidizer',
+    'oxidizing',
+    'oxidant',
+    'oxygen-rich',
+    'supports combustion',
+    'yields oxygen',
+    'chlorate',
+    'permanganate',
+    'peroxide'
+];
+
+function checkOxidizers(sectionText) {
+    return D001_OXIDIZER_KEYWORDS.some(keyword => 
+        sectionText.toLowerCase().includes(keyword.toLowerCase())
+    );
+}
+
+const D002_METAL_CORROSION = {
+    keywords: [
+        'corrodes steel',
+        'corrodes metal',
+        'metal corrosion',
+        'dissolves metal',
+        'steel corrosion rate',
+        'corrodes at a rate'
+    ],
+    threshold: '6.35 mm per year' // Standard steel corrosion rate threshold
+};
+
+function checkMetalCorrosivity(sectionText) {
+    return D002_METAL_CORROSION.keywords.some(keyword => 
+        sectionText.toLowerCase().includes(keyword.toLowerCase())
+    );
 }
