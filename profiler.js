@@ -150,12 +150,13 @@ function checkToxicity(sectionText) {
     
     return toxicityResults;
 }
-
 function extractHazardousCharacteristics(sectionText, sectionNumber) {
     const characteristics = {};
     let isDListed = false;
 
     if (sectionNumber === 9) {
+        characteristics.stateOfMatter = detectStateOfMatter(sectionText);
+
         const phMatch = sectionText.match(/pH\s*:?\s*([\d.]+)/i);
         if (phMatch) {
             const phValue = parseFloat(phMatch[1]);
@@ -351,3 +352,19 @@ function addSearchFilter() {
 }
 
 addSearchFilter();
+
+const STATES_OF_MATTER = {
+    SOLID: ['solid', 'powder', 'crystalline', 'granular', 'pellet'],
+    LIQUID: ['liquid', 'fluid', 'solution', 'viscous'],
+    GAS: ['gas', 'vapor', 'gaseous'],
+    AEROSOL: ['aerosol', 'spray', 'mist']
+};
+
+function detectStateOfMatter(sectionText) {
+    for (const [state, keywords] of Object.entries(STATES_OF_MATTER)) {
+        if (keywords.some(keyword => sectionText.toLowerCase().includes(keyword))) {
+            return state;
+        }
+    }
+    return 'UNKNOWN';
+}
