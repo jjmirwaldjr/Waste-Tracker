@@ -182,7 +182,10 @@ function extractHazardousCharacteristics(sectionText, sectionNumber) {
     }
 
     if (sectionNumber === 9) {
-        characteristics.stateOfMatter = detectStateOfMatter(sectionText);
+        const stateOfMatter = detectStateOfMatter(sectionText);
+        if (stateOfMatter) {
+            characteristics.physicalState = stateOfMatter;
+        }
 
         const phMatch = sectionText.match(/pH\s*:?\s*([\d.]+)/i);
         if (phMatch) {
@@ -225,8 +228,7 @@ function extractHazardousCharacteristics(sectionText, sectionNumber) {
     }
 
     return characteristics;
-}
-//function matchCFRReferences(textContent) {}
+}//function matchCFRReferences(textContent) {}
 
 function matchCFRReferences(textContent) {
     const matches = [];
