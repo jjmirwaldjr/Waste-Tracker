@@ -175,6 +175,15 @@ function extractHazardousCharacteristics(sectionText, sectionNumber) {
             isDListed = true;
         }
 
+        const hypochloriteInfo = detectHypochlorite(sectionText);
+        if (hypochloriteInfo) {
+            characteristics.hypochlorite = hypochloriteInfo;
+            if (!characteristics.dList) characteristics.dList = [];
+            characteristics.dList.push('D001 - Oxidizer');
+            characteristics.dList.push('D002 - Corrosive');
+            isDListed = true;
+        }
+
         // Add explicit NON-RCRA classification if no D-List characteristics found
         if (!isDListed) {
             characteristics.classification = 'NON-RCRA';
@@ -299,23 +308,28 @@ async function processPDF(file) {
             `;
             outputDiv.appendChild(sectionDiv);
         }
-
         const summaryDiv = document.createElement('div');
         summaryDiv.className = 'hazard-summary';
         summaryDiv.innerHTML = `
-            <h3>Hazardous Waste Characteristics Summary</h3>
-            <ul>
-                ${Object.entries(hazardousProperties).map(([key, value]) => {
-                    if (key === 'aerosol') {
-                        return `<li>
-                            <strong>Aerosol Classification:</strong> ${value.classification}<br>
-                            <strong>Regulatory Note:</strong> ${value.handling}
-                        </li>`;
-                    }
-                    return `<li><strong>${key}:</strong> ${Array.isArray(value) ? value.join(', ') : value}</li>`;
-                }).join('')}
-            </ul>
-        `;
+    <h3>Hazardous Waste Characteristics Summary</h3>
+    <ul>
+        ${Object.entries(hazardousProperties).map(([key, value]) => {
+            if (key === 'aerosol') {
+                return `<li>
+                    <strong>Aerosol Classification:</strong> ${value.classification}<br>
+                    <strong>Regulatory Note:</strong> ${value.handling}
+                </li>`;
+            }
+            if (key === 'hypochlorite') {
+                return `<li>
+                    <strong>HypoChlor Classification:</strong> ${value.classification}<br>
+                    <strong>Regulatory Note:</strong> ${value.handling}
+                </li>`;
+            }
+            return `<li><strong>${key}:</strong> ${Array.isArray(value) ? value.join(', ') : value}</li>`;
+        }).join('')}
+    </ul>
+`;
         outputDiv.appendChild(summaryDiv);
 
         const cfrDiv = document.createElement('div');
@@ -415,4 +429,33 @@ function checkMetalCorrosivity(sectionText) {
     return D002_METAL_CORROSION.keywords.some(keyword => 
         sectionText.toLowerCase().includes(keyword.toLowerCase())
     );
+}
+
+const HYPOCHLOR_CRITERIA = {
+    keywords: [
+        'sodium hypochlorite',
+        'naocl',
+        'bleach',
+        'hypochlorite solution',
+        'liquid chlorine'
+    ],
+    classification: 'HypoChlor',
+    handling: 'Must be managed as oxidizer and corrosive material'
+};
+
+function detectHypochlorite(sectionText) {
+    const isHypochlorite = HYPOCHLOR_CRITERIA.keywords.some(keyword => 
+        sectionText.toLowerCase().includes(keyword.toLowerCase())
+    );
+    
+    if (isHypochlorite) {
+        return {
+            classification: HYPOCHLOR_CRITERIA.classification,
+            handling: HYPOCHLOR_CRITERIA.handling,
+            oxidizer: true,
+            corrosive: true
+        };
+    }
+    
+    return null;
 }
