@@ -99,7 +99,7 @@ const WASTE_CHARACTERISTICS = {
     10: "Stability and Reactivity",
     11: "Toxicological Information"
   };
-
+  
   const UN_NUMBER_INFO = {
     pattern: /\bUN\s*(?:No\.|Number|#)?\s*(\d{4})\b/gi,
     commonNumbers: {
@@ -119,7 +119,86 @@ const WASTE_CHARACTERISTICS = {
       '3265': 'Corrosive liquid, acidic, organic'
     }
   };
-
+  
+  // DOM initialization
+  document.addEventListener('DOMContentLoaded', function() {
+    // Check if section-output exists, create it if it doesn't
+    if (!document.getElementById('section-output')) {
+      console.log("Creating missing section-output element");
+      const container = document.querySelector('#profiler-tracker') || document.body;
+      const outputDiv = document.createElement('div');
+      outputDiv.id = 'section-output';
+      container.appendChild(outputDiv);
+    }
+    
+    initializeTabNavigation();
+    initializePdfUpload();
+    addSearchFilter();
+  });
+  
+  function initializeTabNavigation() {
+    const profilerTab = document.getElementById('profiler-tab');
+    if (profilerTab) {
+      const profilerTracker = document.getElementById('profiler-tracker');
+      profilerTab.addEventListener('click', function() {
+        console.log("Switching to Product Profiler Tool tab.");
+        if (typeof activateTab === 'function') {
+          activateTab(profilerTab, profilerTracker);
+        } else {
+          console.warn("activateTab function not found");
+        }
+      });
+    }
+  }
+  
+  function initializePdfUpload() {
+    // Remove any existing event listeners by cloning the form
+    const form = document.getElementById('pdf-upload-form');
+    if (!form) return;
+    
+    const clonedForm = form.cloneNode(true);
+    form.parentNode.replaceChild(clonedForm, form);
+    
+    // Add the event listener to the clean form
+    clonedForm.addEventListener('submit', function(event) {
+      event.preventDefault();
+      console.log("PDF Upload form submitted.");
+  
+      const fileInput = document.getElementById('pdf-upload');
+      if (fileInput.files.length === 0) {
+        alert('Please upload a PDF file.');
+        console.error("No file uploaded.");
+        return;
+      }
+  
+      const file = fileInput.files[0];
+      if (file.type !== 'application/pdf') {
+        alert('Invalid file type. Please upload a PDF.');
+        console.error("Invalid file type:", file.type);
+        return;
+      }
+  
+      console.log("Valid PDF file detected. Starting processing...");
+      processPDF(file);
+    });
+  }
+  
+  // Material detection helpers
+  function detectMaterial(text, materialType) {
+    const keywords = SPECIAL_MATERIALS[materialType].keywords;
+    return keywords.some(keyword => text.toLowerCase().includes(keyword.toLowerCase())) ?
+      SPECIAL_MATERIALS[materialType] : null;
+  }
+  
+  function detectStateOfMatter(text) {
+    for (const [state, keywords] of Object.entries(STATES_OF_MATTER)) {
+      if (keywords.some(keyword => text.toLowerCase().includes(keyword))) {
+        return state;
+      }
+    }
+    return 'UNKNOWN';
+  }
+  
   function detectUNNumbers(text) {
     const unNumbers = [];
     let match;
@@ -138,145 +217,6 @@ const WASTE_CHARACTERISTICS = {
     }
     
     return unNumbers.length > 0 ? unNumbers : null;
-  }
-
-  function extractHazardousCharacteristics(sectionText, sectionNumber) {
-    const characteristics = {};
-    let isDListed = false;
-
-    // Look for UN numbers in any section
-    const unNumbers = detectUNNumbers(sectionText);
-    if (unNumbers) {
-      characteristics.unNumbers = unNumbers;
-    }
-
-    // Rest of the function remains the same...
-    
-    // Check sections 2 and 3 for hazard classifications
-    if (sectionNumber === 2 || sectionNumber === 3) {
-      // Existing code for checking oxidizers, metal corrosivity, etc.
-    }
-    
-    // Rest of your existing function...
-    
-    return characteristics;
-  }
-
-  function appendHazardSummary(outputDiv, hazardousProperties) {
-    const summaryDiv = document.createElement('div');
-    summaryDiv.className = 'hazard-summary';
-    
-    // Start building the HTML content
-    let summaryHTML = `<h3>Hazardous Waste Characteristics Summary</h3>`;
-    
-    // Add UN Numbers section if found
-    if (hazardousProperties.unNumbers && hazardousProperties.unNumbers.length > 0) {
-      summaryHTML += `
-        <div class="un-numbers-section">
-          <h4>UN Numbers Detected</h4>
-          <ul>
-            ${hazardousProperties.unNumbers.map(un => 
-              `<li><strong>UN ${un.number}</strong>: ${un.description}</li>`
-            ).join('')}
-          </ul>
-          <p><em>Note: UN numbers indicate hazardous materials classifications for transport.</em></p>
-        </div>
-      `;
-    }
-    
-    // Add the rest of the characteristics
-    summaryHTML += `<ul>
-      ${Object.entries(hazardousProperties).map(([key, value]) => {
-        // Skip unNumbers as we've already displayed them in their own section
-        if (key === 'unNumbers') return '';
-        
-        if (key === 'aerosol') {
-          return `<li>
-            <strong>Aerosol Classification:</strong> ${value.classification}<br>
-            <strong>Regulatory Note:</strong> ${value.handling}
-          </li>`;
-        }
-        if (key === 'hypochlorite') {
-          return `<li>
-            <strong>HypoChlor Classification:</strong> ${value.classification}<br>
-            <strong>Regulatory Note:</strong> ${value.handling}
-          </li>`;
-        }
-        if (key === 'dList' && Array.isArray(value)) {
-          return `<li><strong>${key}:</strong> ${value.join(', ')}</li>`;
-        }
-        
-        // Handle objects, arrays, and primitives appropriately
-        const displayValue = typeof value === 'object' && value !== null && !Array.isArray(value) 
-          ? JSON.stringify(value)
-          : value;
-          
-        return `<li><strong>${key}:</strong> ${displayValue}</li>`;
-      }).join('')}
-    </ul>`;
-    
-    summaryDiv.innerHTML = summaryHTML;
-    outputDiv.appendChild(summaryDiv);
-  }
-  document.addEventListener('DOMContentLoaded', function() {
-    initializeTabNavigation();
-    initializePdfUpload();
-    addSearchFilter();
-  });
-  
-  function initializeTabNavigation() {
-    const profilerTab = document.getElementById('profiler-tab');
-    const profilerTracker = document.getElementById('profiler-tracker');
-  
-    profilerTab.addEventListener('click', function() {
-      console.log("Switching to Product Profiler Tool tab.");
-      activateTab(profilerTab, profilerTracker);
-    });
-  }
-  
-  function initializePdfUpload() {
-    // Remove any existing event listeners first
-    const form = document.getElementById('pdf-upload-form');
-    const clonedForm = form.cloneNode(true);
-    form.parentNode.replaceChild(clonedForm, form);
-  
-    // Add the event listener to the clean form
-    clonedForm.addEventListener('submit', function(event) {
-      event.preventDefault();
-      console.log("PDF Upload form submitted.");
-
-      const fileInput = document.getElementById('pdf-upload');
-      if (fileInput.files.length === 0) {
-        alert('Please upload a PDF file.');
-        console.error("No file uploaded.");
-        return;
-      }
-
-      const file = fileInput.files[0];
-      if (file.type !== 'application/pdf') {
-        alert('Invalid file type. Please upload a PDF.');
-        console.error("Invalid file type:", file.type);
-        return;
-      }
-
-      console.log("Valid PDF file detected. Starting processing...");
-      processPDF(file);
-    });
-  }  
-  // Material detection helpers
-  function detectMaterial(text, materialType) {
-    const keywords = SPECIAL_MATERIALS[materialType].keywords;
-    return keywords.some(keyword => text.toLowerCase().includes(keyword.toLowerCase())) ?
-      SPECIAL_MATERIALS[materialType] : null;
-  }
-  
-  function detectStateOfMatter(text) {
-    for (const [state, keywords] of Object.entries(STATES_OF_MATTER)) {
-      if (keywords.some(keyword => text.toLowerCase().includes(keyword))) {
-        return state;
-      }
-    }
-    return 'UNKNOWN';
   }
   
   // Hazard checks
@@ -332,6 +272,12 @@ const WASTE_CHARACTERISTICS = {
     const characteristics = {};
     let isDListed = false;
   
+    // Look for UN numbers in any section
+    const unNumbers = detectUNNumbers(sectionText);
+    if (unNumbers) {
+      characteristics.unNumbers = unNumbers;
+    }
+  
     // Check sections 2 and 3 for hazard classifications
     if (sectionNumber === 2 || sectionNumber === 3) {
       // Check for oxidizers (D001)
@@ -340,309 +286,304 @@ const WASTE_CHARACTERISTICS = {
         characteristics.dList.push('D001 - Oxidizer');
         isDListed = true;
       }
-      
-      // Check for metal corrosivity (D002)
-      if (checkMetalCorrosivity(sectionText)) {
-        if (!characteristics.dList) characteristics.dList = [];
-        characteristics.dList.push('D002 - Corrosive to Metal');
-        isDListed = true;
-      }
-      
-      // Check for aerosols
-      const aerosolInfo = detectMaterial(sectionText, 'AEROSOL');
-      if (aerosolInfo) {
-        characteristics.aerosol = aerosolInfo;
-        isDListed = true;
-      }
-  
-      // Check for hypochlorite
-      const hypochloriteInfo = detectMaterial(sectionText, 'HYPOCHLOR');
-      if (hypochloriteInfo) {
-        characteristics.hypochlorite = hypochloriteInfo;
-        if (!characteristics.dList) characteristics.dList = [];
-        characteristics.dList.push('D001 - Oxidizer');
-        characteristics.dList.push('D002 - Corrosive');
-        isDListed = true;
-      }
-  
-      // Add explicit NON-RCRA classification if no D-List characteristics found
-      if (!isDListed) {
-        characteristics.classification = 'NON-RCRA';
-      }
-    }
-  
-    // Process physical properties (Section 9)
-    if (sectionNumber === 9) {
-      // State of matter
-      const stateOfMatter = detectStateOfMatter(sectionText);
-      if (stateOfMatter) {
-        characteristics.physicalState = stateOfMatter;
-      }
-  
-      // Check pH for corrosivity
-      const phMatch = sectionText.match(/pH\s*:?\s*([\d.]+)/i);
-      if (phMatch) {
-        const phValue = parseFloat(phMatch[1]);
-        characteristics.pH = phMatch[1];
-        
-        if (phValue <= WASTE_CHARACTERISTICS.D002.pHThresholds.min || 
-            phValue >= WASTE_CHARACTERISTICS.D002.pHThresholds.max) {
-          if (!characteristics.dList) characteristics.dList = [];
-          characteristics.dList.push('D002 - Corrosive');
-          isDListed = true;
-          characteristics.corrosivityNote = `pH ${phValue} meets D002 criteria`;
-        }
-      }
-      
-      // Check flash point for ignitability
-      const flashMatch = sectionText.match(/flash\s*point\s*:?\s*([-\d.]+)\s*[°℃℉]/i);
-      if (flashMatch) {
-        characteristics.flashPoint = flashMatch[1];
-        if (checkIgnitability(sectionText, parseFloat(flashMatch[1]))) {
-          if (!characteristics.dList) characteristics.dList = [];
-          characteristics.dList.push('D001 - Ignitable');
-          isDListed = true;
-        }
-      }
-    }
-  
-    // Check reactivity (Section 10)
-    if (sectionNumber === 10) {
-      const isReactive = WASTE_CHARACTERISTICS.D003.criteria.some(condition => 
-        sectionText.toLowerCase().includes(condition.toLowerCase())
-      );
-      
-      if (isReactive) {
-        if (!characteristics.dList) characteristics.dList = [];
-        characteristics.dList.push('D003 - Reactive');
-        isDListed = true;
-      }
-    }
-  
-    if (!isDListed && characteristics.dList?.length === 0) {
-      characteristics.classification = 'NON-RCRA';
-    }
-  
-    return characteristics;
+   // Check for metal corrosivity (D002)
+   if (checkMetalCorrosivity(sectionText)) {
+    if (!characteristics.dList) characteristics.dList = [];
+    characteristics.dList.push('D002 - Corrosive to Metal');
+    isDListed = true;
   }
   
-  function matchCFRReferences(textContent) {
-    const matches = [];
-    for (const [section, title] of Object.entries(CFR_REFERENCES)) {
-      if (textContent.toLowerCase().includes(section.toLowerCase())) {
-        matches.push({
-          section: section,
-          title: title,
-          reference: `40 CFR ${section}`
-        });
-      }
+  // Check for aerosols
+  const aerosolInfo = detectMaterial(sectionText, 'AEROSOL');
+  if (aerosolInfo) {
+    characteristics.aerosol = aerosolInfo;
+    isDListed = true;
+  }
+
+  // Check for hypochlorite
+  const hypochloriteInfo = detectMaterial(sectionText, 'HYPOCHLOR');
+  if (hypochloriteInfo) {
+    characteristics.hypochlorite = hypochloriteInfo;
+    if (!characteristics.dList) characteristics.dList = [];
+    characteristics.dList.push('D001 - Oxidizer');
+    characteristics.dList.push('D002 - Corrosive');
+    isDListed = true;
+  }
+
+  // Add explicit NON-RCRA classification if no D-List characteristics found
+  if (!isDListed) {
+    characteristics.classification = 'NON-RCRA';
+  }
+}
+
+// Process physical properties (Section 9)
+if (sectionNumber === 9) {
+  // State of matter
+  const stateOfMatter = detectStateOfMatter(sectionText);
+  if (stateOfMatter) {
+    characteristics.physicalState = stateOfMatter;
+  }
+
+  // Check pH for corrosivity
+  const phMatch = sectionText.match(/pH\s*:?\s*([\d.]+)/i);
+  if (phMatch) {
+    const phValue = parseFloat(phMatch[1]);
+    characteristics.pH = phMatch[1];
+    
+    if (phValue <= WASTE_CHARACTERISTICS.D002.pHThresholds.min || 
+        phValue >= WASTE_CHARACTERISTICS.D002.pHThresholds.max) {
+      if (!characteristics.dList) characteristics.dList = [];
+      characteristics.dList.push('D002 - Corrosive');
+      isDListed = true;
+      characteristics.corrosivityNote = `pH ${phValue} meets D002 criteria`;
     }
-    return matches;
   }
   
-  // Fix the addSearchFilter function to check if elements exist
-  function addSearchFilter() {
-    const outputDiv = document.getElementById('section-output');
-    if (!outputDiv) {
-      console.warn("Element 'section-output' not found in the DOM");
-      return; // Exit the function if element doesn't exist
+  // Check flash point for ignitability
+  const flashMatch = sectionText.match(/flash\s*point\s*:?\s*([-\d.]+)\s*[°℃℉]/i);
+  if (flashMatch) {
+    characteristics.flashPoint = flashMatch[1];
+    if (checkIgnitability(sectionText, parseFloat(flashMatch[1]))) {
+      if (!characteristics.dList) characteristics.dList = [];
+      characteristics.dList.push('D001 - Ignitable');
+      isDListed = true;
     }
-    
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.placeholder = 'Search within sections...';
-    searchInput.className = 'section-search';
-    
-    searchInput.addEventListener('input', (e) => {
-      const searchTerm = e.target.value.toLowerCase();
-      const sections = outputDiv.getElementsByTagName('div');
-      
-      Array.from(sections).forEach(section => {
-        const text = section.textContent.toLowerCase();
-        section.style.display = text.includes(searchTerm) ? 'block' : 'none';
-      });
+  }
+}
+
+// Check reactivity (Section 10)
+if (sectionNumber === 10) {
+  const isReactive = WASTE_CHARACTERISTICS.D003.criteria.some(condition => 
+    sectionText.toLowerCase().includes(condition.toLowerCase())
+  );
+  
+  if (isReactive) {
+    if (!characteristics.dList) characteristics.dList = [];
+    characteristics.dList.push('D003 - Reactive');
+    isDListed = true;
+  }
+}
+
+if (!isDListed && characteristics.dList?.length === 0) {
+  characteristics.classification = 'NON-RCRA';
+}
+
+return characteristics;
+}
+
+function matchCFRReferences(textContent) {
+const matches = [];
+for (const [section, title] of Object.entries(CFR_REFERENCES)) {
+  if (textContent.toLowerCase().includes(section.toLowerCase())) {
+    matches.push({
+      section: section,
+      title: title,
+      reference: `40 CFR ${section}`
     });
-    
-    outputDiv.parentNode.insertBefore(searchInput, outputDiv);
+  }
+}
+return matches;
+}
+
+// PDF processing
+async function processPDF(file) {
+console.log("Initializing PDF.js...");
+const pdfjsLib = window['pdfjsLib'] || window['pdfjs-dist/build/pdf'];
+
+if (!pdfjsLib) {
+  console.error("PDF.js is not loaded.");
+  alert("PDF.js library is missing. Check your configuration.");
+  return;
+}
+
+if (pdfjsLib.GlobalWorkerOptions) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.worker.min.js';
+}
+
+try {
+  const outputDiv = document.getElementById('section-output');
+  if (!outputDiv) {
+    console.error("Element 'section-output' not found in the DOM");
+    alert("Error: Output container not found. Please refresh the page.");
+    return;
+  }
+  
+  outputDiv.innerHTML = '';
+
+  // Show loading indicator
+  const loadingDiv = document.createElement('div');
+  loadingDiv.innerHTML = '<p>Analyzing document, please wait...</p>';
+  loadingDiv.className = 'loading-indicator';
+  outputDiv.appendChild(loadingDiv);
+
+  const pdfData = await file.arrayBuffer();
+  const pdfDocument = await pdfjsLib.getDocument(pdfData).promise;
+  const allSections = [1, 2, 3, 8, 9, 10, 11];
+  
+  // Filter sections to only include those that exist in the PDF
+  const sectionsToAnalyze = allSections.filter(
+    section => section <= pdfDocument.numPages
+  );
+  
+  if (sectionsToAnalyze.length < 3) {
+    alert("Warning: This PDF doesn't appear to be a standard Safety Data Sheet (SDS). Analysis may be incomplete.");
   }
 
-  // Update the DOM initialization to ensure the section-output element exists
-  document.addEventListener('DOMContentLoaded', function() {
-    // Check if section-output exists, create it if it doesn't
-    if (!document.getElementById('section-output')) {
-      console.log("Creating missing section-output element");
-      const container = document.querySelector('#profiler-tracker') || document.body;
-      const outputDiv = document.createElement('div');
-      outputDiv.id = 'section-output';
-      container.appendChild(outputDiv);
-    }
-    
-    initializeTabNavigation();
-    initializePdfUpload();
-    addSearchFilter();
-  });
+  let allTextItems = '';
+  let hazardousProperties = {};
 
-  // Update processPDF function to check if element exists
-  async function processPDF(file) {
-    console.log("Initializing PDF.js...");
-    const pdfjsLib = window['pdfjsLib'] || window['pdfjs-dist/build/pdf'];
+  // Process all PDF pages without displaying raw content
+  for (const section of sectionsToAnalyze) {
+    const page = await pdfDocument.getPage(section);
+    const textContent = await page.getTextContent();
+    const sectionText = textContent.items.map(item => item.str).join(' ');
+    allTextItems += sectionText;
 
-    if (!pdfjsLib) {
-      console.error("PDF.js is not loaded.");
-      alert("PDF.js library is missing. Check your configuration.");
-      return;
-    }
+    // Still analyze the content, just don't display it
+    const characteristics = extractHazardousCharacteristics(sectionText, section);
+    hazardousProperties = { ...hazardousProperties, ...characteristics };
+  }
 
-    if (pdfjsLib.GlobalWorkerOptions) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.13.216/pdf.worker.min.js';
-    }
+  // Remove loading indicator
+  outputDiv.innerHTML = '';
+  
+  // Create a product info div with file name
+  const productInfoDiv = document.createElement('div');
+  productInfoDiv.className = 'product-info';
+  productInfoDiv.innerHTML = `
+    <h3>Product Analysis Results</h3>
+    <p><strong>Document:</strong> ${file.name}</p>
+  `;
+  outputDiv.appendChild(productInfoDiv);
 
-    try {
-      const outputDiv = document.getElementById('section-output');
-      if (!outputDiv) {
-        console.error("Element 'section-output' not found in the DOM");
-        alert("Error: Output container not found. Please refresh the page.");
-        return;
-      }
-      
-      outputDiv.innerHTML = '';
+  // Add notes if important sections are missing
+  if (!sectionsToAnalyze.includes(9)) {
+    const noteDiv = document.createElement('div');
+    noteDiv.className = 'warning-note';
+    noteDiv.innerHTML = '<p>⚠️ Section 9 (Physical Properties) is missing. Flash point and pH analysis unavailable.</p>';
+    outputDiv.appendChild(noteDiv);
+  }
+  
+  if (!sectionsToAnalyze.includes(10)) {
+    const noteDiv = document.createElement('div');
+    noteDiv.className = 'warning-note';
+    noteDiv.innerHTML = '<p>⚠️ Section 10 (Stability and Reactivity) is missing. Reactivity analysis unavailable.</p>';
+    outputDiv.appendChild(noteDiv);
+  }
 
-      const pdfData = await file.arrayBuffer();
-      const pdfDocument = await pdfjsLib.getDocument(pdfData).promise;
-      
-      // Calculate available sections - don't go beyond the actual page count
-      const sectionsToAnalyze = [1, 2, 3, 8, 9, 10, 11].filter(
-        section => section <= pdfDocument.numPages
-      );
-      
-      if (sectionsToAnalyze.length < 3) {
-        alert("Warning: This PDF doesn't appear to be a standard Safety Data Sheet (SDS). Analysis may be incomplete.");
-      }
+  // Add hazardous properties summary
+  appendHazardSummary(outputDiv, hazardousProperties);
+  
+  // Add CFR references
+  appendCFRReferences(outputDiv, allTextItems);
 
-      // Show loading indicator
-      const loadingDiv = document.createElement('div');
-      loadingDiv.innerHTML = '<p>Analyzing document, please wait...</p>';
-      loadingDiv.className = 'loading-indicator';
-      outputDiv.appendChild(loadingDiv);
+} catch (error) {
+  console.error("Error processing PDF:", error);
+  alert("Failed to process PDF. Check the console for details.");
+}
+}
 
-      let allTextItems = '';
-      let hazardousProperties = {};
+// UI Helper functions
+function appendHazardSummary(outputDiv, hazardousProperties) {
+const summaryDiv = document.createElement('div');
+summaryDiv.className = 'hazard-summary';
 
-      // Process all PDF pages without displaying raw content
-      for (const section of sectionsToAnalyze) {
-        const page = await pdfDocument.getPage(section);
-        const textContent = await page.getTextContent();
-        const sectionText = textContent.items.map(item => item.str).join(' ');
-        allTextItems += sectionText;
+// Start building the HTML content
+let summaryHTML = `<h3>Hazardous Waste Characteristics Summary</h3>`;
 
-        // Still analyze the content, just don't display it
-        const characteristics = extractHazardousCharacteristics(sectionText, section);
-        hazardousProperties = { ...hazardousProperties, ...characteristics };
-      }
-
-      // Remove loading indicator
-      outputDiv.innerHTML = '';
-    
-      // Create a product info div with file name
-      const productInfoDiv = document.createElement('div');
-      productInfoDiv.className = 'product-info';
-      productInfoDiv.innerHTML = `
-        <h3>Product Analysis Results</h3>
-        <p><strong>Document:</strong> ${file.name}</p>
-      `;
-      outputDiv.appendChild(productInfoDiv);
-
-      // Add hazardous properties summary
-      appendHazardSummary(outputDiv, hazardousProperties);
-    
-      // Add CFR references
-      appendCFRReferences(outputDiv, allTextItems);
-
-      // Consider adding a note to the UI if important sections are missing
-      if (!sectionsToAnalyze.includes(9)) {
-        const noteDiv = document.createElement('div');
-        noteDiv.className = 'warning-note';
-        noteDiv.innerHTML = '<p>⚠️ Section 9 (Physical Properties) is missing. Flash point and pH analysis unavailable.</p>';
-        outputDiv.appendChild(noteDiv);
-      }
-
-    } catch (error) {
-      console.error("Error processing PDF:", error);
-      alert("Failed to process PDF. Check the console for details.");
-    }
-  }  function appendHazardSummary(outputDiv, hazardousProperties) {
-    const summaryDiv = document.createElement('div');
-    summaryDiv.className = 'hazard-summary';
-    summaryDiv.innerHTML = `
-      <h3>Hazardous Waste Characteristics Summary</h3>
+// Add UN Numbers section if found
+if (hazardousProperties.unNumbers && hazardousProperties.unNumbers.length > 0) {
+  summaryHTML += `
+    <div class="un-numbers-section">
+      <h4>UN Numbers Detected</h4>
       <ul>
-        ${Object.entries(hazardousProperties).map(([key, value]) => {
-          if (key === 'aerosol') {
-            return `<li>
-              <strong>Aerosol Classification:</strong> ${value.classification}<br>
-              <strong>Regulatory Note:</strong> ${value.handling}
-            </li>`;
-          }
-          if (key === 'hypochlorite') {
-            return `<li>
-              <strong>HypoChlor Classification:</strong> ${value.classification}<br>
-              <strong>Regulatory Note:</strong> ${value.handling}
-            </li>`;
-          }
-          if (key === 'dList' && Array.isArray(value)) {
-            return `<li><strong>${key}:</strong> ${value.join(', ')}</li>`;
-          }
-        
-          // Handle objects, arrays, and primitives appropriately
-          const displayValue = typeof value === 'object' && value !== null && !Array.isArray(value) 
-            ? JSON.stringify(value)
-            : value;
-          
-          return `<li><strong>${key}:</strong> ${Array.isArray(value) ? value.join(', ') : value}</li>`;
-        }).join('')}
+        ${hazardousProperties.unNumbers.map(un => 
+          `<li><strong>UN ${un.number}</strong>: ${un.description}</li>`
+        ).join('')}
       </ul>
-    `;
-    outputDiv.appendChild(summaryDiv);
-  }  
-  function appendCFRReferences(outputDiv, textContent) {
-    const cfrDiv = document.createElement('div');
-    cfrDiv.className = 'cfr-references';
-    cfrDiv.innerHTML = '<h3>Title 40 CFR Part 262 Subpart C References</h3>';
+      <p><em>Note: UN numbers indicate hazardous materials classifications for transport.</em></p>
+    </div>
+  `;
+}
+
+// Add the rest of the characteristics
+summaryHTML += `<ul>
+  ${Object.entries(hazardousProperties).map(([key, value]) => {
+    // Skip unNumbers as we've already displayed them in their own section
+    if (key === 'unNumbers') return '';
     
-    const cfrMatches = matchCFRReferences(textContent);
-    if (cfrMatches.length > 0) {
-      const matchList = document.createElement('ul');
-      cfrMatches.forEach(match => {
-        const li = document.createElement('li');
-        li.innerHTML = `<strong>${match.reference}</strong>: ${match.title}`;
-        matchList.appendChild(li);
-      });
-      cfrDiv.appendChild(matchList);
-    } else {
-      cfrDiv.innerHTML += '<p>No direct CFR references found in this section.</p>';
+    if (key === 'aerosol') {
+      return `<li>
+        <strong>Aerosol Classification:</strong> ${value.classification}<br>
+        <strong>Regulatory Note:</strong> ${value.handling}
+      </li>`;
+    }
+    if (key === 'hypochlorite') {
+      return `<li>
+        <strong>HypoChlor Classification:</strong> ${value.classification}<br>
+        <strong>Regulatory Note:</strong> ${value.handling}
+      </li>`;
+    }
+    if (key === 'dList' && Array.isArray(value)) {
+      return `<li><strong>${key}:</strong> ${value.join(', ')}</li>`;
     }
     
-    outputDiv.appendChild(cfrDiv);
-  }
-  
-  function addSearchFilter() {
-    const outputDiv = document.getElementById('section-output');
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.placeholder = 'Search within sections...';
-    searchInput.className = 'section-search';
-    
-    searchInput.addEventListener('input', (e) => {
-      const searchTerm = e.target.value.toLowerCase();
-      const sections = outputDiv.getElementsByTagName('div');
+    // Handle objects, arrays, and primitives appropriately
+    const displayValue = typeof value === 'object' && value !== null && !Array.isArray(value) 
+      ? JSON.stringify(value)
+      : value;
       
-      Array.from(sections).forEach(section => {
-        const text = section.textContent.toLowerCase();
-        section.style.display = text.includes(searchTerm) ? 'block' : 'none';
-      });
-    });
-    
-    outputDiv.parentNode.insertBefore(searchInput, outputDiv);
-  }
+    return `<li><strong>${key}:</strong> ${displayValue}</li>`;
+  }).join('')}
+</ul>`;
+
+summaryDiv.innerHTML = summaryHTML;
+outputDiv.appendChild(summaryDiv);
+}
+
+function appendCFRReferences(outputDiv, textContent) {
+const cfrDiv = document.createElement('div');
+cfrDiv.className = 'cfr-references';
+cfrDiv.innerHTML = '<h3>Title 40 CFR Part 262 Subpart C References</h3>';
+
+const cfrMatches = matchCFRReferences(textContent);
+if (cfrMatches.length > 0) {
+  const matchList = document.createElement('ul');
+  cfrMatches.forEach(match => {
+    const li = document.createElement('li');
+    li.innerHTML = `<strong>${match.reference}</strong>: ${match.title}`;
+    matchList.appendChild(li);
+  });
+  cfrDiv.appendChild(matchList);
+} else {
+  cfrDiv.innerHTML += '<p>No direct CFR references found in this section.</p>';
+}
+
+outputDiv.appendChild(cfrDiv);
+}
+
+function addSearchFilter() {
+const outputDiv = document.getElementById('section-output');
+if (!outputDiv) {
+  console.warn("Element 'section-output' not found in the DOM");
+  return; // Exit the function if element doesn't exist
+}
+
+const searchInput = document.createElement('input');
+searchInput.type = 'text';
+searchInput.placeholder = 'Search within results...';
+searchInput.className = 'section-search';
+
+searchInput.addEventListener('input', (e) => {
+  const searchTerm = e.target.value.toLowerCase();
+  const sections = outputDiv.getElementsByTagName('div');
   
+  Array.from(sections).forEach(section => {
+    const text = section.textContent.toLowerCase();
+    section.style.display = text.includes(searchTerm) ? 'block' : 'none';
+  });
+});
+
+outputDiv.parentNode.insertBefore(searchInput, outputDiv);
+}
